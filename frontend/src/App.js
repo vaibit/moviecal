@@ -15,6 +15,7 @@ import MovieTable from './components/MovieTable';
 import { COUNTRY_OPTIONS } from './utils/countries'; // Dynamically generated list from world-countries
 import Autocomplete from '@mui/material/Autocomplete';
 
+const apiUrl = process.env.REACT_APP_API_URL;
 
 export default function App() {
   const [country, setCountry] = useState(COUNTRY_OPTIONS.find((c) => c.code === 'IE')); // Default: Ireland
@@ -72,7 +73,7 @@ export default function App() {
     const releaseTypes = selectedReleaseTypes.join(',');
   
     try {
-      const response = await fetch(`http://127.0.0.1:5000/movies/ics/custom`, {
+      const response = await fetch(`${apiUrl}/movies/ics/custom`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

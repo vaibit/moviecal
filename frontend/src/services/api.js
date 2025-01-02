@@ -1,6 +1,7 @@
 // src/services/api.js
 
-const API_BASE_URL = 'http://127.0.0.1:5000';
+const API_BASE_URL = process.env.REACT_APP_API_URL;
+console.log("API URL:", process.env.REACT_APP_API_URL);
 
 // Existing fetch
 export async function getMoviesByCountry(countryCode, releaseTypeString = '', year) {
