@@ -1,0 +1,17 @@
+# Node.js / React (Frontend)
+frontend/node_modules
+frontend/build
+frontend/.env
+
+# Python / Flask (Backend)
+backend/__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/*.pyd
+backend/*.db
+backend/*.sqlite3
+backend/*.log
+backend/.env
+backend/instance/
+
+*.log
