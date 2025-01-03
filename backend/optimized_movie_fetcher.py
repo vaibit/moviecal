@@ -174,7 +174,5 @@ def fetch_movies_for_years(years: List[int], batch_size: int = 20, start_pages: 
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-        years_to_fetch = [2024, 2025, 2026]
-        # Specify the page to resume from for 2024
-        start_pages = {2024: 331}
-        fetch_movies_for_years(years_to_fetch, start_pages=start_pages)
+        years_to_fetch = [2025, 2026]
+        fetch_movies_for_years(years_to_fetch)
