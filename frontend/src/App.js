@@ -10,10 +10,10 @@ import {
   MenuItem 
 } from '@mui/material';
 import { getMoviesByCountry } from './services/api';
-//import { RELEASE_TYPES } from './utils/releaseTypes';
 import MovieTable from './components/MovieTable';
-import { COUNTRY_OPTIONS } from './utils/countries'; // Dynamically generated list from world-countries
+import { COUNTRY_OPTIONS } from './utils/countries';
 import Autocomplete from '@mui/material/Autocomplete';
+import { saveAs } from 'file-saver'; // To save the ICS file
 
 const apiUrl = process.env.REACT_APP_API_URL;
 
@@ -30,10 +30,6 @@ export default function App() {
     );
   };
 
-  const handleYearChange = (event) => {
-    setSelectedYear(event.target.value);
-  };
-  
   const handleFetchMovies = async () => {
     if (!country || !country.code) {
       alert('Please select a valid country.');
@@ -56,51 +52,53 @@ export default function App() {
     }
   };
 
-  const handleGenerateIcs = async () => {
-    if (selectedMovieIds.length === 0) {
-      alert('Please select at least one movie to generate an ICS file.');
-      return;
-    }
-    console.log('Selected Movie IDs:', selectedMovieIds); // Debug selected IDs
-
-
-    // Get the unique selected movie IDs
-    const uniqueMovieIds = [...new Set(selectedMovieIds)];
+  // Function to generate ICS content for all selected movies
+  const generateIcsContent = () => {
+    const selectedMovies = movies.filter(movie => selectedMovieIds.includes(movie.movie_id));
   
-    // Get the selected country, year, and release types
-    const countryCode = country.code;
-    const year = selectedYear;
-    const releaseTypes = selectedReleaseTypes.join(',');
+    let icsFile = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Add to Calendar//NONSGML v1.0//EN\n`;
   
-    try {
-      const response = await fetch(`${apiUrl}/movies/ics/custom`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          movie_ids: uniqueMovieIds,
-          country_code: countryCode,
-          year: year,
-          release_types: releaseTypes,
-        }),
-      });
+    // Adding timezone information (UTC timezone as an example)
+    icsFile += `BEGIN:VTIMEZONE\nTZID:UTC\nBEGIN:STANDARD\nDTSTART:19710101T000000\nTZOFFSETFROM:+0000\nTZOFFSETTO:+0000\nEND:STANDARD\nEND:VTIMEZONE\n`;
   
-      if (!response.ok) {
-        throw new Error('Failed to generate ICS');
-      }
+    selectedMovies.forEach(movie => {
+      const startDate = movie.release_date;  // Assuming release_date is in 'YYYY-MM-DD' format
+      const endDate = movie.release_date;    // End date same as start date for one-hour event
   
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'movies_calendar.ics');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
-      console.error('Error generating ICS:', error);
-    }
+      // Generate a unique ID for each event (UUID format)
+      const uid = `movie-${startDate.replace(/-/g, '')}-${Math.floor(Math.random() * 1000000)}`;
+  
+      // Generate current timestamp for DTSTAMP (in UTC format)
+      const dtStamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0];  // Current timestamp
+  
+      // Create the TMDb link
+      const tmdbLink = `https://www.themoviedb.org/movie/${movie.tmdb_id}`;
+  
+      // Event Details: Set to 12:00 PM start time, 1 hour duration
+      icsFile += `BEGIN:VEVENT\nSUMMARY:${movie.title}\nDESCRIPTION:${movie.description} More info: ${tmdbLink}\n`;
+  
+      // Add DTSTAMP and UID for each event
+      icsFile += `DTSTAMP:${dtStamp}\n`;
+      icsFile += `UID:${uid}\n`;
+  
+      // Set the event to start at 12:00 PM on the release date and end at 1:00 PM
+      icsFile += `DTSTART;TZID=UTC:${startDate.replace(/-/g, '')}T120000\n`;  // Start at 12:00 PM
+      icsFile += `DTEND;TZID=UTC:${endDate.replace(/-/g, '')}T130000\n`;    // End at 1:00 PM
+  
+      // No LOCATION, no alarms (notifications)
+      icsFile += `END:VEVENT\n`;
+    });
+  
+    icsFile += `END:VCALENDAR`;
+  
+    return icsFile;
+  };
+  
+  
+  const handleGenerateIcs = () => {
+    const icsContent = generateIcsContent();
+    const blob = new Blob([icsContent], { type: 'text/calendar' });
+    saveAs(blob, 'movies_calendar.ics');
   };
 
   const handleSelectAll = () => {
@@ -112,15 +110,12 @@ export default function App() {
   };
 
   return (
-    
     <Container maxWidth="md" sx={{ my: 4 }}>
       <Typography variant="h4" gutterBottom>
         Cinema to Calendar
       </Typography>
 
-      {/* Country and Year Input in the same row */}
       <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
-        {/* Country Input with Autocomplete */}
         <Autocomplete
           options={COUNTRY_OPTIONS}
           getOptionLabel={(option) => option.name}
@@ -140,17 +135,16 @@ export default function App() {
             <TextField {...params} label="Select Country" variant="outlined" />
           )}
           isOptionEqualToValue={(option, value) => option.code === value.code}
-          sx={{ width: 300 }} // Adjust dropdown width for country
+          sx={{ width: 300 }}
         />
 
-        {/* Year Input with Select */}
         <TextField
           select
           label="Select Year"
           value={selectedYear}
-          onChange={handleYearChange}
+          onChange={(event) => setSelectedYear(event.target.value)}
           variant="outlined"
-          sx={{ width: 150 }} // Adjust dropdown width for year
+          sx={{ width: 150 }}
         >
           {[2024, 2025, 2026, 2027].map((year) => (
             <MenuItem key={year} value={year}>
@@ -163,7 +157,6 @@ export default function App() {
           Fetch Movies
         </Button>
       </Box>
-
       {/* Release Type Options */}
       <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
         <Typography variant="subtitle1">Include:</Typography>
@@ -187,66 +180,38 @@ export default function App() {
           }
           label="Digital"
         />
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={selectedReleaseTypes.includes(5)}
-              onChange={() => handleToggleReleaseType(5)}
-              size="small"
-            />
-          }
-          label="Physical"
-        />
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={selectedReleaseTypes.includes(6)}
-              onChange={() => handleToggleReleaseType(6)}
-              size="small"
-            />
-          }
-          label="TV"
-        />
       </Box>
-
       
-      {/* Movie Table (assuming MovieTable component exists and displays movies) */}
+      {/* Movie Table */}
       {movies.length > 0 && (
         <Box sx={{ mb: 2 }}>
-            <Button variant="text" size="small" onClick={handleSelectAll}>
-              Select All
-            </Button>
-            <Button variant="text" size="small" onClick={handleDeselectAll}>
-              Deselect All
-            </Button>
           <MovieTable
             movies={movies}
             selectedMovieIds={selectedMovieIds}
-            onToggleSelect={(id) =>
-              setSelectedMovieIds((prev) =>
-                prev.includes(id) ? prev.filter((mid) => mid !== id) : [...prev, id]
-              )
-            }
+            onToggleSelect={(id) => setSelectedMovieIds((prev) =>
+              prev.includes(id) ? prev.filter((mid) => mid !== id) : [...prev, id]
+            )}
           />
         </Box>
       )}
 
       {/* Generate ICS Button */}
       {movies.length > 0 && (
-        <Box   sx={{
+        <Box sx={{
           position: 'sticky',
           bottom: 0,
           backgroundColor: 'white',
           borderTop: '1px solid #ccc',
           padding: 2,
           zIndex: 1000,
-        }}
-      >
-        <Typography variant="subtitle2">
-          {selectedMovieIds.length} movies selected.
-        </Typography>
-        <Button variant="contained" color="success" onClick={handleGenerateIcs}>
-          Generate Calendar (.ics)
+        }}>
+          <Typography variant="subtitle2">
+            {selectedMovieIds.length} movies selected.
+          </Typography>
+
+          {/* Button to trigger ICS file generation and download */}
+          <Button variant="contained" color="success" onClick={handleGenerateIcs}>
+            Add All to Calendar (.ics)
         </Button>
         </Box>
         
