@@ -157,6 +157,14 @@ def generate_custom_ics():
 def debug_db_path():
     return f"DB Path: {app.config['SQLALCHEMY_DATABASE_URI']}"
 
+# Simple health check route
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({
+        "status": "success",
+        "message": "App is running"
+    }), 200
+
 
 # Run the app
 if __name__ == '__main__':
