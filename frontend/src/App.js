@@ -225,52 +225,33 @@ export default function App() {
         </>
       )}
 
-{movies.length > 0 && (
-  <Paper
-    elevation={3}
-    sx={{
-      position: 'sticky',
-      bottom: 16,
-      p: 2,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      flexWrap: 'wrap',
-      gap: 2
-    }}
-  >
-    <Typography variant="subtitle1">
-      {selectedMovieIds.length} movies selected
-    </Typography>
-    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-      <Button
-        variant="outlined"
-        onClick={() => {
-          const userId = crypto.randomUUID();
-          const baseUrl = window.location.origin;
-          const calendarUrl = `${baseUrl}/api/calendar/${userId}?country=${country.code}`;
-          
-          // Create temporary link and trigger download
-          const link = document.createElement('a');
-          link.href = calendarUrl;
-          link.type = 'text/calendar';
-          link.download = 'movie_calendar.ics';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }}
-      >
-        Subscribe to Updates
-      </Button>
-      <Button
-        variant="contained"
-        onClick={handleGenerateIcs}
-      >
-        Download Calendar (.ics)
-      </Button>
-    </Box>
-  </Paper>
-)}
+        {movies.length > 0 && (
+          <Paper
+            elevation={3}
+            sx={{
+              position: 'sticky',
+              bottom: 16,
+              p: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderRadius: 2,
+            }}
+          >
+            <Typography variant="subtitle1">
+              {selectedMovieIds.length} movies selected
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleGenerateIcs}
+              size="large"
+            >
+              Download Calendar (.ics)
+            </Button>
+          </Paper>
+        )}
+
         <Box sx={{ mt: 6, textAlign: 'center' }}>
           <Typography variant="body2" color="text.secondary" paragraph>
             This application uses TMDB and the TMDB APIs but is not endorsed, certified,
