@@ -251,7 +251,42 @@ export default function App() {
             </Button>
           </Paper>
         )}
-
+        {movies.length > 0 && (
+  <Paper
+    elevation={3}
+    sx={{
+      position: 'sticky',
+      bottom: 16,
+      p: 2,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 2
+    }}
+  >
+    <Typography variant="subtitle1">
+      {selectedMovieIds.length} movies selected
+    </Typography>
+    <Box sx={{ display: 'flex', gap: 2 }}>
+      <Button
+        variant="outlined"
+        onClick={() => {
+          const userId = crypto.randomUUID();
+          const url = `webcal://${window.location.host}/api/calendar/${userId}?country=${country.code}`;
+          window.location.href = url;
+        }}
+      >
+        Subscribe to Calendar
+      </Button>
+      <Button
+        variant="contained"
+        onClick={handleGenerateIcs}
+      >
+        Download Calendar (.ics)
+      </Button>
+    </Box>
+  </Paper>
+)}
         <Box sx={{ mt: 6, textAlign: 'center' }}>
           <Typography variant="body2" color="text.secondary" paragraph>
             This application uses TMDB and the TMDB APIs but is not endorsed, certified,

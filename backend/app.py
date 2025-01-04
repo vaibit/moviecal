@@ -1,4 +1,5 @@
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, Response
+import uuid
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from models import db, MovieModel, ReleaseDateModel
@@ -151,6 +152,37 @@ def generate_custom_ics():
 
     # Return the ICS file as a download
     return send_file(file_name, as_attachment=True, download_name=file_name, mimetype='text/calendar')
+
+@app.route('/api/calendar/<user_id>', methods=['GET'])
+def get_calendar(user_id):
+    movies = MovieModel.query.join(ReleaseDateModel).filter(
+        ReleaseDateModel.country_code == request.args.get('country'),
+        ReleaseDateModel.release_date >= datetime.now()
+    ).all()
+    
+    cal = generate_ical_feed(movies)
+    return Response(cal, mimetype='text/calendar')
+
+def generate_ical_feed(movies):
+    cal = """BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Cinema Calendar//EN
+X-WR-CALNAME:Upcoming Movies
+X-WR-CALDESC:Movie Release Dates"""
+    
+    for movie in movies:
+        event = f"""
+BEGIN:VEVENT
+UID:{uuid.uuid4()}
+SUMMARY:{movie.title}
+DESCRIPTION:{movie.description}\\nMore info: https://www.themoviedb.org/movie/{movie.tmdb_id}
+DTSTART;VALUE=DATE:{movie.release_date.strftime('%Y%m%d')}
+DTEND;VALUE=DATE:{(movie.release_date + timedelta(days=1)).strftime('%Y%m%d')}
+END:VEVENT"""
+        cal += event
+    
+    cal += "\nEND:VCALENDAR"
+    return cal
 
 
 @app.route('/debug/dbpath', methods=['GET'])
