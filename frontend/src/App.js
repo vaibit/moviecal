@@ -225,33 +225,7 @@ export default function App() {
         </>
       )}
 
-        {movies.length > 0 && (
-          <Paper
-            elevation={3}
-            sx={{
-              position: 'sticky',
-              bottom: 16,
-              p: 2,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              borderRadius: 2,
-            }}
-          >
-            <Typography variant="subtitle1">
-              {selectedMovieIds.length} movies selected
-            </Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleGenerateIcs}
-              size="large"
-            >
-              Download Calendar (.ics)
-            </Button>
-          </Paper>
-        )}
-        {movies.length > 0 && (
+{movies.length > 0 && (
   <Paper
     elevation={3}
     sx={{
@@ -261,22 +235,32 @@ export default function App() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
+      flexWrap: 'wrap',
       gap: 2
     }}
   >
     <Typography variant="subtitle1">
       {selectedMovieIds.length} movies selected
     </Typography>
-    <Box sx={{ display: 'flex', gap: 2 }}>
+    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
       <Button
         variant="outlined"
         onClick={() => {
           const userId = crypto.randomUUID();
-          const url = `webcal://${window.location.host}/api/calendar/${userId}?country=${country.code}`;
-          window.location.href = url;
+          const baseUrl = window.location.origin;
+          const calendarUrl = `${baseUrl}/api/calendar/${userId}?country=${country.code}`;
+          
+          // Create temporary link and trigger download
+          const link = document.createElement('a');
+          link.href = calendarUrl;
+          link.type = 'text/calendar';
+          link.download = 'movie_calendar.ics';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
         }}
       >
-        Subscribe to Calendar
+        Subscribe to Updates
       </Button>
       <Button
         variant="contained"
