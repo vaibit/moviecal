@@ -163,6 +163,16 @@ export default function App() {
         <FormControlLabel
           control={
             <Checkbox
+              checked={selectedReleaseTypes.includes(3)}
+              onChange={() => handleToggleReleaseType(3)}
+              size="small"
+            />
+          }
+          label="Theatrical"
+        />
+        <FormControlLabel
+          control={
+            <Checkbox
               checked={selectedReleaseTypes.includes(1)}
               onChange={() => handleToggleReleaseType(1)}
               size="small"
