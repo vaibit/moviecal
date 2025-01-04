@@ -7,22 +7,32 @@ import {
   Box,
   FormControlLabel,
   Checkbox,
-  MenuItem 
+  MenuItem,
+  Stack,
+  Grid,
+  Divider,
+  CircularProgress,
+  useTheme,
+  useMediaQuery,
+  Paper,
+  Alert
 } from '@mui/material';
 import { getMoviesByCountry } from './services/api';
 import MovieTable from './components/MovieTable';
 import { COUNTRY_OPTIONS } from './utils/countries';
 import Autocomplete from '@mui/material/Autocomplete';
-import { saveAs } from 'file-saver'; // To save the ICS file
-
-const apiUrl = process.env.REACT_APP_API_URL;
+import { saveAs } from 'file-saver';
 
 export default function App() {
-  const [country, setCountry] = useState(COUNTRY_OPTIONS.find((c) => c.code === 'IE')); // Default: Ireland
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [loading, setLoading] = useState(false);
+  const [country, setCountry] = useState(COUNTRY_OPTIONS.find((c) => c.code === 'IE'));
   const [movies, setMovies] = useState([]);
   const [selectedMovieIds, setSelectedMovieIds] = useState([]);
-  const [selectedReleaseTypes, setSelectedReleaseTypes] = useState([3]); // Default: Theatrical only
-  const [selectedYear, setSelectedYear] = useState(2025); // Default to 2025
+  const [selectedReleaseTypes, setSelectedReleaseTypes] = useState([3]);
+  const [selectedYear, setSelectedYear] = useState(2025);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const handleToggleReleaseType = (typeId) => {
     setSelectedReleaseTypes((prev) =>
@@ -31,24 +41,29 @@ export default function App() {
   };
 
   const handleFetchMovies = async () => {
-    if (!country || !country.code) {
+    if (!country?.code) {
       alert('Please select a valid country.');
       return;
     }
-  
+
+    setLoading(true);
     setMovies([]);
     setSelectedMovieIds([]);
-  
+    setHasSearched(true);
+
     try {
-      const releaseTypeString = selectedReleaseTypes.join(',');
-      const result = await getMoviesByCountry(country.code, releaseTypeString, selectedYear);
+      const result = await getMoviesByCountry(
+        country.code, 
+        selectedReleaseTypes.join(','), 
+        selectedYear
+      );
       const fetchedMovies = result.data || [];
-      const allIds = fetchedMovies.map((m) => m.movie_id);
-  
       setMovies(fetchedMovies);
-      setSelectedMovieIds(allIds);
+      setSelectedMovieIds(fetchedMovies.map(m => m.movie_id));
     } catch (error) {
       console.error('Error fetching movies:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -93,108 +108,113 @@ export default function App() {
   
     return icsFile;
   };
-  
-  
+
   const handleGenerateIcs = () => {
     const icsContent = generateIcsContent();
     const blob = new Blob([icsContent], { type: 'text/calendar' });
     saveAs(blob, 'movies_calendar.ics');
   };
 
-  const handleSelectAll = () => {
-    setSelectedMovieIds(movies.map((movie) => movie.movie_id));
-  };
-
-  const handleDeselectAll = () => {
-    setSelectedMovieIds([]);
-  };
-
   return (
-    <Container maxWidth="md" sx={{ my: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Cinema to Calendar
-      </Typography>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Paper elevation={0} sx={{ p: 3, mb: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Cinema to Calendar
+        </Typography>
+        <Typography variant="body1" color="text.secondary" paragraph>
+          Select your country and preferences to create a calendar of upcoming movie releases.
+        </Typography>
 
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
-        <Autocomplete
-          options={COUNTRY_OPTIONS}
-          getOptionLabel={(option) => option.name}
-          renderOption={(props, option) => (
-            <Box component="li" {...props}>
-              <img
-                src={option.flagUrl}
-                alt={option.code}
-                style={{ width: 20, marginRight: 8 }}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={6}>
+            <Stack spacing={2}>
+              <Autocomplete
+                options={COUNTRY_OPTIONS}
+                getOptionLabel={(option) => option.name}
+                renderOption={(props, option) => (
+                  <Box component="li" sx={{ display: 'flex', alignItems: 'center' }} {...props}>
+                    <img
+                      src={option.flagUrl}
+                      alt={option.code}
+                      style={{ width: 20, marginRight: 8 }}
+                    />
+                    {option.name}
+                  </Box>
+                )}
+                value={country}
+                onChange={(_, newValue) => setCountry(newValue || country)}
+                renderInput={(params) => (
+                  <TextField {...params} label="Select Country" />
+                )}
+                isOptionEqualToValue={(option, value) => option.code === value.code}
               />
-              {option.name}
-            </Box>
-          )}
-          value={country}
-          onChange={(event, newValue) => setCountry(newValue || country)}
-          renderInput={(params) => (
-            <TextField {...params} label="Select Country" variant="outlined" />
-          )}
-          isOptionEqualToValue={(option, value) => option.code === value.code}
-          sx={{ width: 300 }}
-        />
+              <TextField
+                select
+                label="Select Year"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                fullWidth
+              >
+                {[2024, 2025, 2026, 2027].map((year) => (
+                  <MenuItem key={year} value={year}>{year}</MenuItem>
+                ))}
+              </TextField>
+            </Stack>
+          </Grid>
 
-        <TextField
-          select
-          label="Select Year"
-          value={selectedYear}
-          onChange={(event) => setSelectedYear(event.target.value)}
-          variant="outlined"
-          sx={{ width: 150 }}
+          <Grid item xs={12} md={6}>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>
+                Release Types:
+              </Typography>
+              <Stack direction={isMobile ? 'column' : 'row'} spacing={2}>
+                {[
+                  { id: 3, label: 'Theatrical' },
+                  { id: 1, label: 'Premiere' },
+                  { id: 4, label: 'Digital' }
+                ].map(({ id, label }) => (
+                  <FormControlLabel
+                    key={id}
+                    control={
+                      <Checkbox
+                        checked={selectedReleaseTypes.includes(id)}
+                        onChange={() => handleToggleReleaseType(id)}
+                      />
+                    }
+                    label={label}
+                  />
+                ))}
+              </Stack>
+            </Paper>
+          </Grid>
+        </Grid>
+
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={handleFetchMovies}
+            disabled={loading}
+            startIcon={loading && <CircularProgress size={20} />}
+          >
+            {loading ? 'Fetching Movies...' : 'Fetch Movies'}
+          </Button>
+        </Box>
+
+
+        {hasSearched && !loading && movies.length === 0 && (
+        <Alert 
+          severity="info" 
+          sx={{ mt: 4 }}
         >
-          {[2024, 2025, 2026, 2027].map((year) => (
-            <MenuItem key={year} value={year}>
-              {year}
-            </MenuItem>
-          ))}
-        </TextField>
+          No movies found for {country.name} in {selectedYear} with the selected release types.
+          Try adjusting your filters or selecting a different year.
+        </Alert>
+      )}
 
-        <Button variant="contained" onClick={handleFetchMovies}>
-          Fetch Movies
-        </Button>
-      </Box>
-      {/* Release Type Options */}
-      <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Typography variant="subtitle1">Include:</Typography>
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={selectedReleaseTypes.includes(3)}
-              onChange={() => handleToggleReleaseType(3)}
-              size="small"
-            />
-          }
-          label="Theatrical"
-        />
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={selectedReleaseTypes.includes(1)}
-              onChange={() => handleToggleReleaseType(1)}
-              size="small"
-            />
-          }
-          label="Premiere"
-        />
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={selectedReleaseTypes.includes(4)}
-              onChange={() => handleToggleReleaseType(4)}
-              size="small"
-            />
-          }
-          label="Digital"
-        />
-      </Box>
-      
-      {/* Movie Table */}
       {movies.length > 0 && (
-        <Box sx={{ mb: 2 }}>
+        <>
+          <Divider sx={{ my: 4 }} />
           <MovieTable
             movies={movies}
             selectedMovieIds={selectedMovieIds}
@@ -202,55 +222,54 @@ export default function App() {
               prev.includes(id) ? prev.filter((mid) => mid !== id) : [...prev, id]
             )}
           />
-        </Box>
+        </>
       )}
 
-      {/* Generate ICS Button */}
-      {movies.length > 0 && (
-        <Box sx={{
-          position: 'sticky',
-          bottom: 0,
-          backgroundColor: 'white',
-          borderTop: '1px solid #ccc',
-          padding: 2,
-          zIndex: 1000,
-        }}>
-          <Typography variant="subtitle2">
-            {selectedMovieIds.length} movies selected.
+        {movies.length > 0 && (
+          <Paper
+            elevation={3}
+            sx={{
+              position: 'sticky',
+              bottom: 16,
+              p: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderRadius: 2,
+            }}
+          >
+            <Typography variant="subtitle1">
+              {selectedMovieIds.length} movies selected
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleGenerateIcs}
+              size="large"
+            >
+              Download Calendar (.ics)
+            </Button>
+          </Paper>
+        )}
+
+        <Box sx={{ mt: 6, textAlign: 'center' }}>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            This application uses TMDB and the TMDB APIs but is not endorsed, certified,
+            or otherwise approved by TMDB.
           </Typography>
-
-          {/* Button to trigger ICS file generation and download */}
-          <Button variant="contained" color="success" onClick={handleGenerateIcs}>
-            Add All to Calendar (.ics)
-        </Button>
+          <a
+            href="https://www.themoviedb.org/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img
+              src={`${process.env.PUBLIC_URL}/tmdb-logo.svg`}
+              alt="TMDB Logo"
+              style={{ maxWidth: 150 }}
+            />
+          </a>
         </Box>
-        
-      )}
-            <Box
-        sx={{
-          mt: 4,
-          pt: 2,
-          borderTop: '1px solid #ccc',
-          textAlign: 'center',
-          fontSize: '0.9rem',
-        }}
-      >
-        <Typography variant="body2" gutterBottom>
-        This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
-        </Typography>
-        <a
-          href="https://www.themoviedb.org/"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ textDecoration: 'none', color: 'inherit' }}
-        >
-          <img
-            src={`${process.env.PUBLIC_URL}/tmdb-logo.svg`}
-            alt="TMDB Logo"
-            style={{ maxWidth: '150px', marginTop: '10px' }}
-          />
-        </a>
-      </Box>
+      </Paper>
     </Container>
   );
 }
